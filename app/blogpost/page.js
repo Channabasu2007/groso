@@ -1,145 +1,176 @@
-// app/blog/page.jsx
-"use client"
-import dbConnect from "@/lib/dbConnect";
-import Blog from "@/models/Blog";
-import BlogCard from "@/components/BlogCard";
+"use client";
+
+import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-export default async function BlogListingPage() {
-//   await dbConnect();
-//   const blogs = await Blog.find().sort({ createdAt: -1 }).lean();
+import Link from "next/link";
+import Image from "next/image";
+import { toast } from "react-hot-toast";
+import { motion } from "framer-motion";
+import Fuse from "fuse.js";
 
+export default function BlogListingPage() {
+  const [blogs, setBlogs] = useState([]);
+  const [filteredBlogs, setFilteredBlogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  let fuse; // Fuse instance
 
+  useEffect(() => {
+    const fetchBlogs = async () => {
+      try {
+        const res = await fetch("/api/blogspage", { cache: "no-store" });
+        if (!res.ok) throw new Error("Failed to fetch blogs");
+        const data = await res.json();
+        setBlogs(data);
+        setFilteredBlogs(data); // Initial blogs
+      } catch (err) {
+        console.error("Error fetching blogs:", err);
+        toast.error("Failed to load blogs.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchBlogs();
+  }, []);
 
-const blogs = [
-  {
-    dishName: "Creamy Turmeric Potato & Tomato Curry",
-    slug: "creamy-turmeric-potato-tomato-curry",
-    intro:
-      "A cozy blend of earthy potatoes and tangy tomatoes with the golden warmth of turmeric. Perfect with soft naan or fragrant rice.",
-    heroImage: {
-      imgUrl:
-        "https://images.pexels.com/photos/20408461/pexels-photo-20408461.jpeg",
-      alt: "Creamy Turmeric Curry",
-    },
-  },
-  {
-    dishName: "Zesty Lemon Herb Pasta",
-    slug: "zesty-lemon-herb-pasta",
-    intro:
-      "Bright and refreshing, this pasta combines lemon zest, fresh herbs, and a drizzle of olive oil for a light yet flavorful meal.",
-    heroImage: {
-      imgUrl:
-        "https://images.pexels.com/photos/1437267/pexels-photo-1437267.jpeg",
-      alt: "Lemon Herb Pasta",
-    },
-  },
-  {
-    dishName: "Classic Chocolate Brownies",
-    slug: "classic-chocolate-brownies",
-    intro:
-      "Rich, fudgy, and irresistibly chocolatey — the kind of brownies that melt in your mouth and make every bite memorable.",
-    heroImage: {
-      imgUrl:
-        "https://images.pexels.com/photos/302680/pexels-photo-302680.jpeg",
-      alt: "Chocolate Brownies",
-    },
-  },
-  {
-    dishName: "Smoky Grilled Veggie Sandwich",
-    slug: "smoky-grilled-veggie-sandwich",
-    intro:
-      "Loaded with smoky grilled vegetables, this hearty sandwich is a colorful, healthy, and satisfying meal option.",
-    heroImage: {
-      imgUrl:
-        "https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg",
-      alt: "Grilled Veggie Sandwich",
-    },
-  },
-  {
-    dishName: "Garlic Butter Shrimp Rice Bowl",
-    slug: "garlic-butter-shrimp-rice-bowl",
-    intro:
-      "Juicy shrimp tossed in garlic butter and served over fluffy rice with a sprinkle of fresh herbs — pure comfort in a bowl.",
-    heroImage: {
-      imgUrl:
-        "https://images.pexels.com/photos/327098/pexels-photo-327098.jpeg",
-      alt: "Garlic Butter Shrimp Rice Bowl",
-    },
-  },
-  {
-    dishName: "Fresh Mango Salsa",
-    slug: "fresh-mango-salsa",
-    intro:
-      "A vibrant mix of sweet mangoes, zesty lime, and a hint of chili — this salsa pairs perfectly with chips or grilled meats.",
-    heroImage: {
-      imgUrl:
-        "https://images.pexels.com/photos/1640775/pexels-photo-1640775.jpeg",
-      alt: "Fresh Mango Salsa",
-    },
-  },
-  {
-    dishName: "Spicy Paneer Tikka",
-    slug: "spicy-paneer-tikka",
-    intro:
-      "Char-grilled paneer cubes marinated in tangy spices, served hot with mint chutney for a perfect appetizer.",
-    heroImage: {
-      imgUrl:
-        "https://images.pexels.com/photos/1640778/pexels-photo-1640778.jpeg",
-      alt: "Paneer Tikka",
-    },
-  },
-  {
-    dishName: "Hearty Lentil Soup",
-    slug: "hearty-lentil-soup",
-    intro:
-      "A nourishing bowl of lentils simmered with aromatic vegetables and spices — warm, hearty, and packed with protein.",
-    heroImage: {
-      imgUrl:
-        "https://images.pexels.com/photos/1640774/pexels-photo-1640774.jpeg",
-      alt: "Hearty Lentil Soup",
-    },
-  },
-  {
-    dishName: "Cheesy Veggie Pizza",
-    slug: "cheesy-veggie-pizza",
-    intro:
-      "A golden crust topped with gooey cheese, colorful vegetables, and herbs — a true crowd-pleaser for pizza nights.",
-    heroImage: {
-      imgUrl:
-        "https://images.pexels.com/photos/1640776/pexels-photo-1640776.jpeg",
-      alt: "Veggie Pizza",
-    },
-  },
-  {
-    dishName: "Crispy Falafel Wrap",
-    slug: "crispy-falafel-wrap",
-    intro:
-      "Crisp falafel balls wrapped in warm pita bread with fresh veggies and creamy tahini sauce — Middle Eastern goodness.",
-    heroImage: {
-      imgUrl:
-        "https://images.pexels.com/photos/1437261/pexels-photo-1437261.jpeg",
-      alt: "Falafel Wrap",
-    },
-  },
-];
+  // Setup Fuse.js options
+  const fuseOptions = {
+    keys: ["dishName", "slug", "intro", "content.title", "content.paragraph", "ingredients.name"],
+    threshold: 0.3, // 0 = exact match, 1 = very loose
+  };
 
+  // Handle search input
+  const handleSearch = (e) => {
+    const value = e.target.value;
+    setSearchQuery(value);
 
+    if (!value.trim()) {
+      setFilteredBlogs(blogs); // Reset to all blogs
+      return;
+    }
 
+    fuse = new Fuse(blogs, fuseOptions);
+    const results = fuse.search(value);
+    setFilteredBlogs(results.map((result) => result.item)); // Extract blog objects
+  };
 
-  return (<>
-  <Navbar/>
-    <div className="max-w-6xl mx-auto px-4 py-8">
-      <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-6">
-        Latest Recipes
-      </h1>
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {blogs.map((blog) => (
-          <BlogCard key={blog.dishName} blog={blog} />
-        ))}
+  const handleShare = async (blog) => {
+    const shareData = {
+      title: blog.dishName,
+      text: blog.intro,
+      url: `${window.location.origin}/blogpost/${blog.slug}`,
+    };
+    try {
+      await navigator.share(shareData);
+      toast.success("Shared Successfully");
+    } catch (err) {
+      toast.error("Sorry, something went wrong.");
+    }
+  };
+
+  return (
+    <>
+      <Navbar />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-10">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="text-center mb-8"
+        >
+          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold text-gray-900 dark:text-gray-100 mb-3">
+            Welcome to Our Recipe Blog
+          </h1>
+          <p className="text-gray-600 text-lg sm:text-xl dark:text-gray-300 mb-5">
+            Discover mouth-watering recipes & pro cooking tips!
+          </p>
+          
+          {/* Search Box */}
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={handleSearch}
+            placeholder="Search recipes by name, slug, or intro..."
+            className="w-full max-w-md px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-green-500 focus:outline-none shadow-sm"
+          />
+        </motion.div>
+
+        {/* Loader */}
+        {loading && (
+          <div className="flex justify-center items-center py-16">
+            <div className="relative mx-auto w-20 h-20">
+              <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-green-500 animate-spin-glow" />
+              <div className="absolute inset-0 flex items-center justify-center text-3xl text-green-500 animate-pulse-soft">
+                🛒
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* No Blogs */}
+        {!loading && filteredBlogs.length === 0 && (
+          <div className="text-center h-[60vh] flex flex-col justify-center">
+            <p className="text-zinc-900 dark:text-gray-300 text-lg font-medium">
+              No matching blogs found. Try a different keyword!
+            </p>
+          </div>
+        )}
+
+        {/* Blogs Grid */}
+        {!loading && filteredBlogs.length > 0 && (
+          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 ">
+            {filteredBlogs.map((blog, index) => (
+              <motion.div
+                key={blog.slug}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: index * 0.1 }}
+                className="bg-white dark:bg-gray-900 rounded-xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700 hover:shadow-2xl transition transform hover:-translate-y-1"
+              >
+                {/* Blog Image */}
+                <div className="relative w-full h-48 sm:h-52 md:h-56">
+                  <Image
+                    src={blog.heroImage?.imgUrl || "/placeholder.jpg"}
+                    alt={blog.heroImage?.alt || blog.dishName}
+                    fill
+                    className="object-cover transition-transform hover:scale-105"
+                    loading="lazy"
+                  />
+                </div>
+
+                {/* Blog Content */}
+                <div className="p-5">
+                  <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-2">
+                    {blog.dishName}
+                  </h2>
+                  <p className="text-gray-600 dark:text-gray-300 text-sm line-clamp-3 mb-4">
+                    {blog.intro}
+                  </p>
+
+                  {/* Buttons */}
+                  <div className="flex gap-3 flex-wrap">
+                    <Link
+                      href={`/blogpost/${blog.slug}`}
+                      className="inline-block text-sm font-semibold px-5 py-2 bg-gradient-to-r from-green-500 to-yellow-500 text-white rounded-lg shadow-md hover:scale-105 transition"
+                    >
+                      Read More
+                    </Link>
+                    <button
+                      onClick={() => handleShare(blog)}
+                      className="inline-block text-sm px-5 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-white font-medium shadow-md transition"
+                    >
+                      Share
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
       </div>
-    </div>
-    <Footer/>
+      <Footer />
     </>
   );
 }

@@ -10,8 +10,8 @@ export const groceryNameSlice = createSlice({
   name: "groceryName",
   initialState,
   reducers: {
-    togglepageLoading: (state) => {
-      state.pageLoading = !state.pageLoading; 
+      togglepageLoading: (state, action) => {
+      state.pageLoading = action.payload; 
     },
     
     setDishName: (state, action) => {

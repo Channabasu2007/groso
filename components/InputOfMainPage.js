@@ -9,9 +9,9 @@ import {
   deleteGroceries,
 } from "../app/features/groceriesHandeling/groceriesSlice";
 import {
+  setBlogReady,
   setrouterUrl,
-  toggleBlogIsReady
-} from "../app/features/groceriesHandeling/BlogRedirectSlice"
+} from "../app/features/groceriesHandeling/BlogRedirectSlice";
 import toast from "react-hot-toast";
 import InputLoader from "@/components/InputLoader"; // This might be redundant if you're using a single loader
 import { cn } from "@/lib/utils";
@@ -156,9 +156,8 @@ function InputOfMainPage({ mode, inputBottomOffset }) {
   const [value, setValue] = React.useState("");
   const [LangBtn, setLangBtn] = useState(false);
   const [translations, setTranslations] = useState(0); // Renamed for clarity and consistency
-
-
-
+  const [DishForAi, setDishForAi] = useState("");
+  const [GotEverything, setGotEverything] = useState(false);
   const [item, setitem] = useState("");
   const [quantity, setquantity] = useState("");
   const [unit, setunit] = useState("kg");
@@ -169,6 +168,7 @@ function InputOfMainPage({ mode, inputBottomOffset }) {
   const router = useRouter();
   const pageloading = useSelector((state) => state.groceryName.pageLoading);
 
+  const dishNameFromRedux = useSelector((state) => state.groceryName.DishName);
   useEffect(() => {
     setgroceryMode(mode === "grocery");
   }, [mode]);
@@ -179,232 +179,209 @@ function InputOfMainPage({ mode, inputBottomOffset }) {
     );
   }
 
-  const sendList = async () => {
-    if (!groceryMode) {
-      if (!DishInput || servings <= 0) {
-        // Combine checks
-        let msg = "";
-        if (DishInput.trim() === "") {
-          msg = "You forgot to add the name of the Dish.";
-        } else if (servings <= 0) {
-          msg =
-            "Please add how many servings you want (must be greater than 0).";
-        }
-        toast.error(msg);
-        return;
+ const sendList = async () => {
+  if (!groceryMode) {
+    if (!DishInput || servings <= 0) {
+      let msg = "";
+      if (DishInput.trim() === "") {
+        msg = "You forgot to add the name of the Dish.";
+      } else if (servings <= 0) {
+        msg = "Please add how many servings you want (must be greater than 0).";
       }
-      if (groceries.length > 0) {
-        if (
-          window.confirm(
-            "To Get New Ingredients the present list will be deleted."
-          )
-        ) {
-          dispatch(deleteGroceries());
-          toast.success("New Ingredients are coming!");
+      toast.error(msg);
+      return;
+    }
+
+    if (groceries.length > 0) {
+      if (
+        window.confirm("To Get New Ingredients the present list will be deleted.")
+      ) {
+        dispatch(deleteGroceries());
+        toast.success("New Ingredients are coming!");
+      } else return;
+    }
+
+    let _finalDishName = "";
+    let _finalGroceries = [];
+    let _dataAcquisitionSuccessful = false;
+    setGotEverything(false);
+
+    // Show loading only for ingredient fetching
+    dispatch(togglepageLoading(true));
+
+    if (!isYouTubeLink(DishInput)) {
+      _finalDishName = DishInput;
+      setDishForAi(DishInput);
+      dispatch(setDishName(DishInput));
+      dispatch(setServings(servings));
+      setTranslations(0);
+
+      try {
+        const response = await fetch("api/get-ingredients", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ dishName: DishInput, servings }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(
+            errorData.error ||
+              "Something went wrong fetching ingredients from the server."
+          );
+        }
+
+        const data = await response.json();
+        if (data.ingredients?.length > 0) {
+          const fetchedIngredients = data.ingredients.map((item) => ({
+            item: item.name,
+            quantity: String(item.quantity),
+            unit: item.unit,
+          }));
+
+          dispatch(addGroceries(fetchedIngredients));
+          _finalGroceries = fetchedIngredients;
+          _dataAcquisitionSuccessful = true;
+
+          toast.success(
+            `Ingredients for "${DishInput}" (${servings} servings) added to list!`
+          );
+          setDishInput("");
+          setservings(1);
         } else {
+          toast.error("No ingredients found for this dish. Please try another name.");
+        }
+      } catch (error) {
+        console.error("Failed to fetch ingredients:", error);
+        toast.error(error.message || "Failed to get ingredients. Please try again.");
+      } finally {
+        dispatch(togglepageLoading(false));
+      }
+    } else {
+      // YouTube Flow
+      try {
+        const response = await fetch("/api/youtubeTranscripter", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ DishInput }),
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          toast.error("No captions found for this video.");
+          dispatch(togglepageLoading(false));
           return;
         }
-      }
 
-      if (!isYouTubeLink(DishInput)) {
-        dispatch(setDishName(DishInput));
-        dispatch(setServings(servings));
-        dispatch(togglepageLoading());
-        setTranslations(0);
+        let script = Array.isArray(data.content)
+          ? data.content.map((item) => item.text).join(" ")
+          : data.content;
 
-        try {
-          const response = await fetch("api/get-ingredients", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ dishName: DishInput, servings: servings }),
-          });
-
-          // Check for non-OK HTTP responses
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({})); // Attempt to parse, fallback to empty object
-            throw new Error(
-              errorData.error ||
-                "Something went wrong fetching ingredients from the server."
-            );
-          }
-
-          const data = await response.json();
-
-          if (
-            data.ingredients &&
-            Array.isArray(data.ingredients) &&
-            data.ingredients.length > 0
-          ) {
-            const fetchedIngridients = data.ingredients.map((item) => ({
-              item: item.name,
-              quantity: String(item.quantity),
-              unit: item.unit,
-            }));
-
-            dispatch(addGroceries(fetchedIngridients));
-            toast.success(
-              `Ingredients for "${DishInput}" (${servings} servings) added to list!`
-            );
-
-            setDishInput("");
-            setservings(1);
-          } else {
-            toast.error(
-              "No ingredients found for this dish. Please try a different name."
-            );
-          }
-        } catch (error) {
-          console.error("Failed to fetch ingredients:", error);
-          toast.error(
-            error.message || "Failed to get ingredients. Please try again."
-          );
-        } finally {
-          dispatch(togglepageLoading());
+        if (!script) {
+          toast.error("Failed to process video content.");
+          dispatch(togglepageLoading(false));
+          return;
         }
-      } else if (isYouTubeLink(DishInput)) {
-        dispatch(togglepageLoading());
 
-        try {
-          const response = await fetch("/api/youtubeTranscripter", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ DishInput }),
-          });
+        const ask = await fetch("/api/YT-ingridients", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ script, servings }),
+        });
 
-          const data = await response.json();
-
-          if (!response.ok) {
-            console.error("Transcript error:", data.error);
-            toast.error("No captions found for this video.");
-            return;
-          }
-          console.log(data);
-          let script = "";
-
-          if (Array.isArray(data.content)) {
-            script = data.content.map((item) => item.text).join(" ");
-          } else if (typeof data.content === "string") {
-            script = data.content;
-          } else {
-            console.error("Unexpected content format:", data.content);
-          }
-
-          const ask = await fetch("/api/YT-ingridients", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ script, servings }),
-          });
-          if (!ask.ok) {
-            const errorText =
-              (await ask.json()).error || "Failed to fetch ingredients.";
-            return toast.error(errorText);
-          }
-
-          const details = await ask.json();
-          const DishName = details.DishName;
-          dispatch(setDishName(DishName));
-          const Aiservings = details.servings;
-          dispatch(setServings(Aiservings));
-          const ingredients = details.ingredients;
-
-          if (
-            ingredients &&
-            Array.isArray(ingredients) &&
-            ingredients.length > 0
-          ) {
-            const fetchedIngridientsFromYT = ingredients.map((item) => ({
-              item: item.name,
-              quantity: String(item.quantity),
-              unit: item.unit,
-            }));
-
-            dispatch(addGroceries(fetchedIngridientsFromYT));
-            toast.success(`Ingredients for "${DishName}" added to list!`);
-
-            setDishInput("");
-            setservings(1);
-          } else {
-            toast.error(
-              "No ingredients found for this Video. Please try a different Link."
-            );
-          }
-
-          // ✅ Next: send data.plain to Gemini for ingredient extraction
-        } catch (err) {
-          console.error("Error fetching transcript:", err);
-          toast.error("Network error. Please try again.");
-        } finally {
-          dispatch(togglepageLoading());
+        if (!ask.ok) {
+          toast.error((await ask.json()).error || "Failed to fetch ingredients.");
+          dispatch(togglepageLoading(false));
+          return;
         }
-      }
-      try{ 
-      const groceries = useSelector((state) => state.groceries);
-      const dishNameFromRedux = useSelector(
-        (state) => state.groceryName.DishName
-      );
 
-      const newBlog = await fetch("/api/NewDishGenerator", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ groceries, dishName: dishNameFromRedux }),
-      });
-      const text = await newBlog.text(); // Fetch raw response
-      let data;
+        const details = await ask.json();
+        _finalDishName = details.DishName;
+        setDishForAi(details.DishName);
+        dispatch(setDishName(details.DishName));
+        dispatch(setServings(details.servings));
+
+        if (details.ingredients?.length > 0) {
+          const fetchedIngredientsFromYT = details.ingredients.map((item) => ({
+            item: item.name,
+            quantity: String(item.quantity),
+            unit: item.unit,
+          }));
+
+          dispatch(addGroceries(fetchedIngredientsFromYT));
+          _finalGroceries = fetchedIngredientsFromYT;
+          _dataAcquisitionSuccessful = true;
+
+          toast.success(`Ingredients for "${details.DishName}" added to list!`);
+          setDishInput("");
+          setservings(1);
+        } else {
+          toast.error("No ingredients found for this Video. Please try another Link.");
+        }
+      } catch (err) {
+        console.error("Error fetching transcript or ingredients:", err);
+        toast.error("Network error or issue with video processing. Please try again.");
+      } finally {
+        dispatch(togglepageLoading(false));
+      }
+    }
+
+    // Call blog generation silently (no loading toggle)
+    if (_dataAcquisitionSuccessful) {
+      setGotEverything(true);
       try {
-        data = JSON.parse(text);
-      } catch {
-        console.error("Non-JSON response:", text);
-        throw new Error("Unexpected server response");
-      }
-
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to generate dish.");
-      }
-
-      const dishName = data.slug;
-      if (!dishName) {
-        throw new Error("Dish name missing in server response.");
-      }
-
-
-   dispatch(setrouterUrl(`/blogpost/${encodeURIComponent(dishName)}`))
-
-    }catch (error) {
-      console.error("SearchDish error:", error);
-      toast.error(error.message || "Something went wrong!");
-    } finally {
-      dispatch(toggleBlogIsReady())
-    }
-    }
-
-    if (groceryMode) {
-      if (item.trim() && quantity.trim()) {
-        dispatch(togglepageLoading());
-        const combinedUnit = quantity.trim() + unit;
-        dispatch(
-          addGroceries({
-            item: item.trim(),
-            unit: combinedUnit,
-          })
-        );
-        setitem("");
-        setquantity("");
-        dispatch(togglepageLoading());
-        setTranslations(0); // Reset translation count for new manual additions
-        toast.success("Item added to grocery list!");
-      } else {
-        let msg = "";
-        if (item.trim() === "") {
-          msg = "You forgot to add the name of the item.";
-        } else if (quantity.trim() === "") {
-          msg = "Please add the desired quantity.";
+        const newBlog = await fetch("/api/NewDishGenerator", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ groceries: _finalGroceries, dishName: _finalDishName }),
+        });
+        const text = await newBlog.text();
+        let data;
+        try {
+          data = JSON.parse(text);
+        } catch {
+          console.error("Non-JSON response for NewDishGenerator:", text);
+          throw new Error("Unexpected server response for blog generation.");
         }
-        toast.error(msg);
+
+        if (!newBlog.ok) throw new Error(data.error || "Failed to generate dish.");
+
+        const dishNameSlug = data.slug;
+        if (!dishNameSlug) throw new Error("Dish name slug missing in server response.");
+
+        const newBlogUrl = `/blogpost/${encodeURIComponent(dishNameSlug)}`;
+        dispatch(setrouterUrl(newBlogUrl));
+        toast.success("Blog post generated!");
+      } catch (error) {
+        console.error("Blog generation error:", error);
+        toast.error(error.message || "Something went wrong!");
+      } finally {
+        dispatch(setBlogReady(true));
+        setGotEverything(false);
       }
+    } else {
+      setGotEverything(false);
+      dispatch(setBlogReady(false));
     }
-  };
+  }
+
+  // Grocery Mode
+  if (groceryMode) {
+    if (item.trim() && quantity.trim()) {
+      dispatch(togglepageLoading(true));
+      dispatch(
+        addGroceries({ item: item.trim(), unit: quantity.trim() + unit })
+      );
+      setitem("");
+      setquantity("");
+      dispatch(togglepageLoading(false));
+      setTranslations(0);
+      toast.success("Item added to grocery list!");
+    } else {
+      toast.error(item.trim() === "" ? "You forgot to add the name of the item." : "Please add the desired quantity.");
+    }
+  }
+};
 
   const searchDish = async () => {
     if (groceries.length === 0) {
@@ -415,7 +392,7 @@ function InputOfMainPage({ mode, inputBottomOffset }) {
     console.log("Groceries:", groceries);
 
     try {
-      dispatch(togglepageLoading());
+      dispatch(togglepageLoading(true));
 
       const res = await fetch("/api/NewDishGenerator", {
         method: "POST",
@@ -446,9 +423,10 @@ function InputOfMainPage({ mode, inputBottomOffset }) {
       console.error("SearchDish error:", error);
       toast.error(error.message || "Something went wrong!");
     } finally {
-      dispatch(togglepageLoading());
+      dispatch(togglepageLoading(false));
     }
   };
+
 
   const selectedLabel = value
     ? languages.find((lang) => lang.value === value)?.label
@@ -485,7 +463,7 @@ function InputOfMainPage({ mode, inputBottomOffset }) {
     setOpen(false);
     setLangBtn(false);
 
-    dispatch(togglepageLoading());
+    dispatch(togglepageLoading(true));
     try {
       const ingredients = groceries.map((grocery) => grocery.item); // Extracts original item names
 
@@ -532,7 +510,7 @@ function InputOfMainPage({ mode, inputBottomOffset }) {
       console.error("Translation error:", error); // Log the error for debugging
       toast.error(error.message || "Failed to translate. Please try again."); // User-friendly error message
     } finally {
-      dispatch(togglepageLoading());
+      dispatch(togglepageLoading(false));
     }
   };
 
