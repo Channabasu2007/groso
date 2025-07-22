@@ -1,5 +1,6 @@
-// components/main.jsx
+
 "use client";
+import { Suspense } from "react";
 import React, { useState, useEffect } from "react";
 import InputOfMainPage from "@/components/InputOfMainPage";
 import { useSearchParams } from "next/navigation";
@@ -96,6 +97,7 @@ const Main = () => {
 
   return (
     <>
+     <Suspense fallback={<div>Loading...</div>}>
       <div className="h-[100svh] w-[100vw] flex flex-col">
         <Navbar />
 
@@ -250,7 +252,8 @@ const Main = () => {
         </div>
         <InputOfMainPage mode={mode} inputBottomOffset={inputBottomOffset} />
       </div>
-    </>
+    
+    </Suspense></>
   );
 };
 
