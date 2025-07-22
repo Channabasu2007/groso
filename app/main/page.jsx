@@ -151,7 +151,7 @@ function MainInner() {
             style={{ paddingBottom: `${inputBottomOffset + 120}px` }}
           >
             {/* Empty state */}
-            {!groceryInfo.pageLoading || groceries.length === 0 && (
+            {(!groceryInfo.pageLoading || groceries.length) === 0 && (
               <div className="text-center rounded-2xl text-zinc-700 dark:text-zinc-200 w-full h-[200px] flex flex-col items-center justify-center gap-2 mt-3 p-4">
                 <p className="text-xl font-semibold">🛒 No items in your list</p>
                 <p className="text-sm text-zinc-500 dark:text-zinc-400">
