@@ -1,5 +1,6 @@
 "use client"
 import React from 'react'
+import Image from 'next/image';
 
 const SupportedBrands = () => {
   return (
@@ -32,10 +33,23 @@ const SupportedBrands = () => {
     { name: 'Amazon Fresh', src: '/logos/Amazonfresh.png' },
     { name: 'BigBasket', src: '/logos/bigbasket.jpg' },
   ]).map((brand, index) => (
-    <div key={index} className="flex flex-col  items-center min-w-[120px] p-4 bg-white dark:bg-zinc-900 rounded-xl shadow border border-zinc-200 dark:border-zinc-800">
-      <img src={brand.src} alt={brand.name} className="object-cover rounded-full   w-[40px] h-[40px] " />
-      <p className="mt-2 text-xs font-semibold text-zinc-600 dark:text-zinc-300">{brand.name}</p>
-    </div>
+   <div 
+  key={index} 
+  className="flex flex-col items-center min-w-[120px] p-4 bg-white dark:bg-zinc-900 rounded-xl shadow border border-zinc-200 dark:border-zinc-800"
+>
+  <div className="w-[40px] h-[40px] object-cover relative">
+    <Image 
+      src={brand.src} 
+      alt={brand.name} 
+      className="object-fill rounded-full" 
+      fill
+    />
+  </div>
+  <p className="mt-2 text-xs font-semibold text-zinc-600 dark:text-zinc-300">
+    {brand.name}
+  </p>
+</div>
+
   ))}
 </div>
 

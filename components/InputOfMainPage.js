@@ -329,6 +329,7 @@ function InputOfMainPage({ mode, inputBottomOffset }) {
     // Call blog generation silently (no loading toggle)
     if (_dataAcquisitionSuccessful) {
       setGotEverything(true);
+      let blogUrlCreated = false;
       try {
         const newBlog = await fetch("/api/NewDishGenerator", {
           method: "POST",
@@ -351,12 +352,13 @@ function InputOfMainPage({ mode, inputBottomOffset }) {
 
         const newBlogUrl = `/blogpost/${encodeURIComponent(dishNameSlug)}`;
         dispatch(setrouterUrl(newBlogUrl));
+        blogUrlCreated = true;
         toast.success("Blog post generated!");
       } catch (error) {
         console.error("Blog generation error:", error);
         toast.error(error.message || "Something went wrong!");
       } finally {
-        dispatch(setBlogReady(true));
+        dispatch(setBlogReady(blogUrlCreated));
         setGotEverything(false);
       }
     } else {
@@ -677,31 +679,31 @@ function InputOfMainPage({ mode, inputBottomOffset }) {
                 disabled={pageloading}
                 className="flex items-center gap-2 disabled:cursor-not-allowed"
               >
-                {!groceryMode ? (
+                {/* {!groceryMode ? (
                   <div className="flex rounded-lg overflow-hidden border duration-1000 border-zinc-300 dark:border-white/20 shadow-md text-black dark:text-white font-semibold">
-                    <button className="w-7 h-10 bg-green-600 dark:bg-green-500 text-white flex items-center justify-center">
-                      D
-                    </button>
-                    <button
-                      onClick={() => setgroceryMode(true)}
-                      className="w-30 h-10 bg-yellow-400 cursor-pointer dark:bg-yellow-500 hover:bg-yellow-300 dark:hover:bg-yellow-400 transition"
-                    >
-                      Grocery Mode
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex rounded-lg overflow-hidden border duration-1000 border-zinc-300 dark:border-white/20 shadow-md text-black dark:text-white font-semibold">
+                  //   <button className="w-7 h-10 bg-green-600 dark:bg-green-500 text-white flex items-center justify-center">
+                  //     D
+                  //   </button>
+                  //   <button
+                  //     onClick={() => setgroceryMode(true)}
+                  //     className="w-30 h-10 bg-yellow-400 cursor-pointer dark:bg-yellow-500 hover:bg-yellow-300 dark:hover:bg-yellow-400 transition"
+                  //   >
+                  //     Grocery Mode
+                  //   </button>
+                   </div>
+                ) : ( */}
+                  {/* <div className="flex rounded-lg overflow-hidden border duration-1000 border-zinc-300 dark:border-white/20 shadow-md text-black dark:text-white font-semibold">
                     <button
                       onClick={() => setgroceryMode(false)}
                       className="w-30 h-10 cursor-pointer bg-green-400 dark:bg-green-500 hover:bg-green-300 dark:hover:bg-green-400 transition"
                     >
                       Dish to Grocery
-                    </button>
-                    <button className="w-7 h-10 bg-yellow-500 text-white flex items-center justify-center">
+                    </button> */}
+                    {/* <button className="w-7 h-10 bg-yellow-500 text-white flex items-center justify-center">
                       G
-                    </button>
-                  </div>
-                )}
+                    </button> */}
+                  {/* </div> */}
+                {/* )} */}
               </div>
 
               {/* Desktop Language Selector */}
@@ -758,6 +760,12 @@ function InputOfMainPage({ mode, inputBottomOffset }) {
             {pageloading && (
               <button
                 disabled={pageloading}
+                onKeyDown={(e) => {
+                  if(e.key === "Enter"){
+                    sendList()
+                  }
+                  else{return}
+                }}
                 onClick={sendList}
                 className={`px-5 py-2 cursor-pointer disabled:cursor-not-allowed rounded-lg font-semibold shadow-md active:scale-95 transition-all ${
                   groceryMode

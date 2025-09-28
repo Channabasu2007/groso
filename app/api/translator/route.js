@@ -1,4 +1,5 @@
 import { model } from "@/lib/translatorGemini"; // Your Gemini model instance
+import { generateTextWithFetch } from "@/lib/gemini";
 import { NextResponse } from "next/server";
 
 export async function POST(req) {
@@ -24,11 +25,21 @@ Expected format example:
 ["Rice", "Chicken Breast", "Salt"]
 `;
 
-    const result = await model.generateContent(prompt);
-    const text = result.response.text();
+    let text = "";
+    try {
+      const result = await model.generateContent(prompt);
+      text = result.response.text();
+    } catch (e) {
+      // Fallback to HTTP helper with supported model
+      text = await generateTextWithFetch(prompt, 'gemini-2.5-flash');
+    }
 
     // Extract JSON array from AI response
-    const jsonMatch = text.match(/\[[\s\S]*\]/);
+    const cleaned = text
+      .replace(/```json/gi, "")
+      .replace(/```/g, "")
+      .trim();
+    const jsonMatch = cleaned.match(/\[[\s\S]*\]/);
     if (!jsonMatch) {
       throw new Error("AI response format invalid. Could not extract array.");
     }

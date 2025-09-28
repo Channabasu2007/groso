@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import dbConnect from "@/lib/dbConnect";
 import Blog from "@/models/Blog";
 import { model } from "@/lib/NewDishGemini";
+import { generateTextWithFetch } from "@/lib/gemini";
 
 // --- helpers ---
 function slugify(str = "") {
@@ -28,11 +29,13 @@ function normalizeGroceriesForPrompt(groceries = []) {
   });
 }
 
+
 export async function POST(req) {
-  try {
-    const body = await req.json().catch(() => ({}));
+      const body = await req.json().catch(() => ({}));
     const dishNameInput = body.dishName?.trim() || null;
     const groceries = Array.isArray(body.groceries) ? body.groceries : [];
+  try {
+
 
     if (!dishNameInput && groceries.length === 0) {
       return NextResponse.json(
@@ -104,8 +107,20 @@ RETURN RAW JSON ONLY. No markdown fences. No commentary. If unsure, make best re
     `.trim();
 
     // Call Gemini (adjust API call if lib differs)
-    const result = await model.generateContent(prompt);
-    const raw = result?.response?.text?.() ?? "";
+    let raw = "";
+    try {
+      const result = await model.generateContent(prompt);
+      raw = result?.response?.text?.() ?? "";
+    } catch (e) {
+      try {
+        raw = await generateTextWithFetch(prompt, 'gemini-2.5-flash');
+      } catch (e2) {
+        return NextResponse.json(
+          { error: "Failed to generate with Gemini.", details: e2?.message || e?.message },
+          { status: 502 }
+        );
+      }
+    }
 
     // Clean out fences if any
     const cleaned = raw
@@ -160,8 +175,14 @@ RETURN RAW JSON ONLY. No markdown fences. No commentary. If unsure, make best re
     }
 
     // Normalize & fill slug
-    const dishName = parsed.dishName.trim();
-    const slug = parsed.slug?.trim() || slugify(dishName);
+    const dishName = String(parsed.dishName || "").trim();
+    if (!dishName) {
+      return NextResponse.json(
+        { error: "AI output missing dishName.", parsed },
+        { status: 502 }
+      );
+    }
+    const slug = parsed.slug?.trim?.() || slugify(dishName);
 
     let heroImage = {
       imgUrl: "",
@@ -174,7 +195,7 @@ const PEXELS_API_KEY = process.env.PEXELS_API_KEY;
     if (PEXELS_API_KEY) {
   try {
     const imgRes = await fetch(
-      `https://api.pexels.com/v1/search?query=${encodeURIComponent(dishName)}&per_page=1`,
+      `https://api.pexels.com/v1/search?query=${encodeURIComponent( dishNameInput || dishName)}&per_page=1`,
       { headers: { Authorization: PEXELS_API_KEY } }
     );
     if (imgRes.ok) {

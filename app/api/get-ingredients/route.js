@@ -1,12 +1,19 @@
-import { model } from "@/lib/gemini";
+// API route (e.g., app/api/generate-ingredients/route.js)
+import { generateText } from "@/lib/gemini";
 
 export async function POST(req) {
   try {
-    const { dishName, servings,  } = await req.json();
+    const { dishName, servings } = await req.json();
+    
+    // Validate input
+    if (!dishName || !servings) {
+      return new Response(
+        JSON.stringify({ error: "Missing dishName or servings" }), 
+        { status: 400 }
+      );
+    }
 
-    // Prompt for Gemini
-const prompt = `You are a professional chef assistant specializing in precise and highly user-friendly ingredient measurements.
-Your task is to provide a comprehensive list of ingredients for the dish "${dishName}" adjusted to serve **exactly ${servings} people**.
+    const prompt = `You are a professional chef assistant specializing in precise and highly user-friendly ingredient measurements. Your task is to provide a comprehensive list of ingredients for the dish "${dishName}" adjusted to serve **exactly ${servings} people**.
 
 Your response MUST be valid JSON only. Do NOT include any introductory, concluding text, conversational filler, or Markdown beyond the JSON itself.
 
@@ -20,7 +27,7 @@ Example of the ONLY expected JSON format (quantities should be accurately calcul
   "ingredients": [
     { "name": "Rice", "quantity": "2 cups", "unit": "400g" },
     { "name": "Chicken Breast", "quantity": "500 grams", "unit": "0.5kg" },
-    { "name": "Onion", "quantity": "1 piece", "unit": "120g" }, // Example: if an estimate is reasonable
+    { "name": "Onion", "quantity": "1 piece", "unit": "120g" },
     { "name": "Garlic", "quantity": "3 cloves", "unit": "" },
     { "name": "Tomato Paste", "quantity": "50 grams", "unit": "50g" },
     { "name": "Water", "quantity": "250 ml", "unit": "250ml" },
@@ -28,22 +35,72 @@ Example of the ONLY expected JSON format (quantities should be accurately calcul
     { "name": "Salt", "quantity": "1.5 teaspoons", "unit": "7.5g" },
     { "name": "Black Pepper", "quantity": "0.5 teaspoon", "unit": "2.5g" }
   ]
-}
-`;
+}`;
 
-    const result = await model.generateContent(prompt);
-    const text = result.response.text();
+    const text = await generateText(prompt);
 
-    // Clean and parse JSON
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      return new Response(JSON.stringify({ error: "Invalid response" }), { status: 500 });
+    if (!text || typeof text !== 'string') {
+      return new Response(
+        JSON.stringify({ error: "AI returned empty or invalid response" }),
+        { status: 502 }
+      );
+    }
+    
+    // Clean the response text
+    const cleanedText = text.trim();
+    
+    // Try to extract JSON more robustly
+    let jsonData;
+    try {
+      // First try to parse directly
+      jsonData = JSON.parse(cleanedText);
+    } catch (parseError) {
+      // If that fails, try to extract JSON from the response
+      const jsonMatch = cleanedText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        console.error("No JSON found in response:", cleanedText);
+        return new Response(
+          JSON.stringify({ error: "Invalid response format from AI" }), 
+          { status: 500 }
+        );
+      }
+      
+      try {
+        jsonData = JSON.parse(jsonMatch[0]);
+      } catch (secondParseError) {
+        console.error("Failed to parse extracted JSON:", jsonMatch[0]);
+        return new Response(
+          JSON.stringify({ error: "Failed to parse AI response" }), 
+          { status: 500 }
+        );
+      }
+    }
+    
+    // Validate the response structure
+    if (!jsonData.ingredients || !Array.isArray(jsonData.ingredients)) {
+      return new Response(
+        JSON.stringify({ error: "Invalid response structure" }), 
+        { status: 500 }
+      );
     }
 
-    const data = JSON.parse(jsonMatch[0]);
+    return new Response(JSON.stringify(jsonData), { 
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
 
-    return new Response(JSON.stringify(data), { status: 200 });
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+    console.error("API error:", error);
+    return new Response(
+      JSON.stringify({ error: error.message }), 
+      { 
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      }
+    );
   }
 }
