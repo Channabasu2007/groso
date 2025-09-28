@@ -1,36 +1,54 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# GroceryFinder
 
-## Getting Started
+[Live demo](https://groceryfinder.vercel.app/) • *Generate ingredients from any dish name or a YouTube recipe link — then create a step-by-step blog and (soon) let users order ingredients instantly.*
 
-First, run the development server:
+---
+
+## 🚀 What is GroceryFinder
+
+GroceryFinder is a web app that helps users extract the ingredients and a cooking guide for any dish.
+
+Two input modes:
+- **Dish name** — type a dish name (e.g. `butter chicken`) and GroceryFinder returns the ingredients and a short step-by-step blog to prepare it.  
+- **YouTube link** — paste a recipe video link and GroceryFinder identifies the ingredients used in the video and generates the blog/steps.
+
+**Goal**: Make it easy for anyone to find what they need to cook a dish — and in a future update connect GroceryFinder to quick-commerce services so users can order missing items instantly.
+
+---
+
+## ⭐ Key features
+
+- Extract ingredient list from a dish name  
+- Extract ingredient list from a YouTube recipe video URL  
+- Auto-generate a blog-style recipe with ordered steps  
+- Clean, minimal UI, mobile responsive  
+- Future roadmap: quick-commerce integration  
+
+---
+
+## 🧩 Tech stack
+
+- **Frontend & Backend:** Next.js  
+- **Hosting:** Vercel  
+- **AI / parsing:** Google Gemini 
+  
+
+---
+
+## ⚙️ Local setup (for developers)
 
 ```bash
+# clone
+git clone https://github.com/<your-username>/groceryfinder.git
+cd groceryfinder
+
+# install
+npm install
+
+# env
+# create a .env.local with keys the app needs, for example:
+# NEXT_PUBLIC_API_BASE_URL=
+# OPENAI_API_KEY=
+
+# dev server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
