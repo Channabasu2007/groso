@@ -53,13 +53,13 @@ const Navbar = () => {
       <div className="hidden lg:flex items-center gap-3">
        <ThemeToggler/>
 
-        <button className="py-2 px-5 bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 rounded-xl text-lg font-bold shadow hover:bg-zinc-800 dark:hover:bg-zinc-200 transition cursor-pointer">
+        {/* <button className="py-2 px-5 bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 rounded-xl text-lg font-bold shadow hover:bg-zinc-800 dark:hover:bg-zinc-200 transition cursor-pointer">
           Sign In
         </button>
 
         <button className="py-2 px-5 bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 rounded-xl text-lg font-bold shadow hover:bg-zinc-800 dark:hover:bg-zinc-200 transition cursor-pointer">
           Sign Up
-        </button>
+        </button> */}
 
     
       </div>
@@ -68,12 +68,12 @@ const Navbar = () => {
       <div className="flex items-center lg:hidden gap-2">
        
 <ThemeToggler/>
-        <Link
+        {/* <Link
           href="/SignUp"
           className="py-1 px-3 text-[1rem] bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 rounded-lg font-bold hover:bg-zinc-800 dark:hover:bg-zinc-200 transition cursor-pointer text-center"
         >
           Sign Up
-        </Link>
+        </Link> */}
         <div
           className="lg:hidden cursor-pointer"
           onClick={() => setMenuOpen(!menuOpen)}
@@ -109,13 +109,13 @@ const Navbar = () => {
           </Link>
         ))}
 
-        <button className="py-2 px-4 bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 rounded-xl text-lg font-bold shadow hover:bg-zinc-800 dark:hover:bg-zinc-200 transition text-center">
+        {/* <button className="py-2 px-4 bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 rounded-xl text-lg font-bold shadow hover:bg-zinc-800 dark:hover:bg-zinc-200 transition text-center">
           Sign In
         </button>
 
         <button className="py-2 px-4 bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 rounded-xl text-lg font-bold shadow hover:bg-zinc-800 dark:hover:bg-zinc-200 transition text-center">
           Sign Up
-        </button>
+        </button> */}
 <ThemeToggler/>
      
       </div>

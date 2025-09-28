@@ -24,11 +24,11 @@ const Home = () => {
     <div className="w-[100vw] overflow-x-hidden overflow-y-auto h-[100vh] bg-zinc-950">
       <Navbar />
       <Hero />
-      <SupportedBrands />
+     
       <DishToGroceryRoadmap />
       <GroceryOrderRoadmap />
       <Reasons />
-      <FAQsection />
+      {/* <FAQsection /> */}
       <Footer />
     </div>
   );
